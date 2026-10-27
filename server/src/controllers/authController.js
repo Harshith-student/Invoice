@@ -47,12 +47,13 @@ const setCookieAndRespond = (res, user, statusCode = 200) => {
   res.cookie('token', token, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   });
 
   res.status(statusCode).json({
     success: true,
+    token,
     user: {
       _id: user._id,
       name: user.name,

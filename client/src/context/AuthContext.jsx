@@ -31,6 +31,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post('/auth/login', { email, password });
       if (res.data?.success) {
+        if (res.data.token) {
+          localStorage.setItem('chasepay_token', res.data.token);
+        }
         setUser(res.data.user);
         return { success: true };
       }
@@ -46,6 +49,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post('/auth/register', { name, email, password });
       if (res.data?.success) {
+        if (res.data.token) {
+          localStorage.setItem('chasepay_token', res.data.token);
+        }
         setUser(res.data.user);
         return { success: true };
       }
@@ -62,6 +68,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
+      localStorage.removeItem('chasepay_token');
       setUser(null);
     }
   };

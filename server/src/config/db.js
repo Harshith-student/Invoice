@@ -5,16 +5,18 @@ export const connectDB = async () => {
     return mongoose.connection;
   }
 
-  const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/chasepay';
+  const DEFAULT_ATLAS_URI = 'mongodb+srv://chandanapu25bcs10263_db_user:FxH6LZ3wE1EKLeY6@cluster0.hgrktqs.mongodb.net/chasepay?retryWrites=true&w=majority';
+  const uri = process.env.MONGO_URI || DEFAULT_ATLAS_URI;
 
   try {
-    // Attempt connecting to configured MONGO_URI (2 second timeout)
-    const conn = await mongoose.connect(uri, { serverSelectionTimeoutMS: 2500 });
+    // Attempt connecting to configured MONGO_URI
+    const conn = await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
     console.log(`✅ MongoDB connected: ${conn.connection.host}`);
+    return conn;
   } catch (err) {
-    // If running in development and local Mongo is not running, fall back to in-memory database
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('⚠️  Local MongoDB not detected at ' + uri);
+    // If running in local development and Mongo is not reachable, fall back to in-memory database
+    if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
+      console.log('⚠️  Remote/Local MongoDB failed at ' + uri);
       console.log('🚀 Starting built-in In-Memory MongoDB (Zero-setup development mode)...');
       try {
         const { MongoMemoryServer } = await import('mongodb-memory-server');
@@ -29,7 +31,6 @@ export const connectDB = async () => {
     }
 
     console.error('❌ MongoDB connection error:', err.message);
-    console.error('💡 Tip: Either start your local MongoDB daemon, paste a free MongoDB Atlas URI into server/.env, or run with the built-in memory DB.');
-    process.exit(1);
+    throw new Error(`Database connection failed: ${err.message}`);
   }
 };
