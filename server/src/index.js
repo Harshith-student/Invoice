@@ -26,14 +26,38 @@ import { initReminderCron } from './jobs/reminderCron.js';
 const app = express();
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
+const allowedOrigin = (origin, callback) => {
+  // Allow requests with no origin (like mobile apps, curl, or same-origin)
+  if (!origin) return callback(null, true);
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  if (
+    origin === clientUrl ||
+    origin.endsWith('.vercel.app') ||
+    origin.startsWith('http://localhost:')
+  ) {
+    return callback(null, true);
+  }
+  return callback(null, true); // Permissive in dev/services routing
+};
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true, // allow cookies cross-origin during dev
+    origin: allowedOrigin,
+    credentials: true,
   })
 );
 app.use(express.json());
 app.use(cookieParser());
+
+// Ensure MongoDB is connected for serverless invocations
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
