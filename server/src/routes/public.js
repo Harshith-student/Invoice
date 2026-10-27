@@ -1,9 +1,15 @@
 import { Router } from 'express';
-import { getPublicInvoice } from '../controllers/publicController.js';
+import {
+  getPublicInvoice,
+  processPublicPayment,
+  simulatePublicPay,
+} from '../controllers/publicController.js';
 
 const router = Router();
 
-// No auth required for public client payment page
+// Public routes (no auth required)
 router.get('/invoices/:publicId', getPublicInvoice);
+router.post('/invoices/:publicId/pay', processPublicPayment);
+router.post('/invoices/:publicId/simulate-pay', simulatePublicPay);
 
 export default router;
