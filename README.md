@@ -10,6 +10,14 @@
 
 ---
 
+## 🎬 Demo Video
+
+> Watch a full walkthrough of ChasePay — from login to invoice creation, PDF generation, Razorpay checkout, and AI-powered payment reminders.
+
+[![▶ Watch Demo on Google Drive](https://img.shields.io/badge/▶%20Watch%20Demo-Google%20Drive-4285F4?style=for-the-badge&logo=google-drive&logoColor=white)](https://drive.google.com/file/d/1egoQOeGUZZV-DNOQJc6zCW7OyQwCMX6V/view?usp=drive_link)
+
+---
+
 ## 📌 Problem
 
 Indian freelancers and independent agencies face two persistent challenges:
@@ -63,7 +71,7 @@ graph TD
 | **Automated AI Copywriting** | Uses Google Gemini with tone progression: **pre-due** (friendly), **due** (polite), **overdue-1** (direct), **overdue-2** (urgent). |
 | **Instant Template Fallback** | Instant fallback to structured templates if Gemini API keys are omitted or rate-limited. |
 | **Daily 9:00 AM Cron** | Node-cron schedule checks active invoices daily; manual trigger via `POST /api/reminders/run` or UI button. |
-| **Razorpay Payment Links** | Auto-generates payment links on invoice dispatch; verifies HMAC SHA-256 webhook signatures idempotently. |
+| **Razorpay Embedded Checkout** | Opens Razorpay modal directly in-page (UPI, Cards, Net Banking); creates Orders via API, verifies HMAC SHA-256 signatures server-side, and marks invoices paid idempotently. |
 | **Public Client Portal** | Dedicated `/i/:publicId` route where clients can view invoices and click to pay without creating an account. |
 | **First-View Tracking** | Automatically marks invoice status from `sent` → `viewed` the moment the client opens their public link. |
 | **Security & Validation** | Zod input validation on all payloads, bcrypt password hashing, and secure httpOnly JWT cookies. |
@@ -232,6 +240,8 @@ npm run test:phase5    # Razorpay link creation, HMAC webhook & Gemini reminder 
 | `GET` | `/api/invoices/:id/pdf` | Yes | Generate & stream PDF invoice |
 | `POST` | `/api/invoices/:id/send` | Yes | Create payment link, email client & set `sent` |
 | `GET` | `/api/public/invoices/:publicId` | No | Public client portal; marks `viewed` |
+| `POST` | `/api/public/invoices/:publicId/create-order` | No | Create Razorpay Order for embedded checkout |
+| `POST` | `/api/public/invoices/:publicId/verify-payment` | No | Verify Razorpay signature & mark invoice paid |
 | `POST` | `/api/reminders/run` | Yes | Manually trigger reminder scan |
 | `GET` | `/api/reminders/invoices/:id` | Yes | Fetch reminder log history for invoice |
 | `POST` | `/api/webhooks/razorpay` | No | Razorpay webhook; marks invoice `paid` |

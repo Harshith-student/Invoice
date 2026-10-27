@@ -35,6 +35,8 @@ const invoiceSchema = new mongoose.Schema(
     },
     razorpayLinkId: { type: String, default: '' },
     paymentLinkUrl: { type: String, default: '' },
+    razorpayOrderId: { type: String, default: '' },
+    razorpayPaymentId: { type: String, default: '' },
     paidAt: { type: Date },
     notes: { type: String, default: '' },
   },

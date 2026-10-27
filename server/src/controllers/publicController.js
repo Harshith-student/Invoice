@@ -1,6 +1,6 @@
 import Invoice from '../models/Invoice.js';
 import { createError } from '../middleware/errorHandler.js';
-import { createPaymentLink } from '../services/razorpayService.js';
+import { createPaymentLink, createOrder, verifyPaymentSignature } from '../services/razorpayService.js';
 
 export const getPublicInvoice = async (req, res, next) => {
   try {
@@ -70,6 +70,94 @@ export const processPublicPayment = async (req, res, next) => {
     res.json({
       success: true,
       paymentLinkUrl: invoice.paymentLinkUrl,
+      invoice,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /public/invoices/:publicId/create-order
+ * Creates a Razorpay Order for embedded checkout modal
+ */
+export const createRazorpayOrder = async (req, res, next) => {
+  try {
+    const { publicId } = req.params;
+
+    const invoice = await Invoice.findOne({ publicId })
+      .populate('clientId', 'name email phone address gstin')
+      .populate('userId', 'name business');
+
+    if (!invoice) {
+      throw createError('Invoice not found', 404);
+    }
+
+    if (invoice.status === 'paid') {
+      return res.json({ success: true, message: 'Invoice already paid', alreadyPaid: true, invoice });
+    }
+
+    const orderData = await createOrder(invoice);
+
+    // Return order details + client info for pre-filling checkout
+    res.json({
+      success: true,
+      ...orderData,
+      invoice: {
+        invoiceNumber: invoice.invoiceNumber,
+        total: invoice.total,
+        publicId: invoice.publicId,
+      },
+      prefill: {
+        name: invoice.clientId?.name || '',
+        email: invoice.clientId?.email || '',
+        contact: invoice.clientId?.phone || '',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /public/invoices/:publicId/verify-payment
+ * Verifies Razorpay payment signature and marks invoice paid
+ */
+export const verifyRazorpayPayment = async (req, res, next) => {
+  try {
+    const { publicId } = req.params;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    const invoice = await Invoice.findOne({ publicId });
+    if (!invoice) {
+      throw createError('Invoice not found', 404);
+    }
+
+    if (invoice.status === 'paid') {
+      return res.json({ success: true, message: 'Already paid', invoice });
+    }
+
+    // Verify signature (skip in demo mode)
+    const isDemo = razorpay_order_id?.startsWith('order_demo_');
+    if (!isDemo) {
+      const isValid = verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+      if (!isValid) {
+        throw createError('Payment verification failed — invalid signature', 400);
+      }
+    }
+
+    // Mark paid
+    invoice.status = 'paid';
+    invoice.paidAt = new Date();
+    invoice.razorpayPaymentId = razorpay_payment_id;
+    invoice.razorpayOrderId = razorpay_order_id;
+    await invoice.save();
+
+    console.log(`✅ Invoice ${invoice.invoiceNumber} marked PAID via checkout verification.`);
+
+    res.json({
+      success: true,
+      message: 'Payment verified and invoice marked paid!',
       invoice,
     });
   } catch (err) {

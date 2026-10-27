@@ -17,6 +17,69 @@ const getRazorpayInstance = () => {
 };
 
 /**
+ * Creates a Razorpay Order (for embedded checkout modal).
+ * Returns orderId + keyId for frontend to open Razorpay modal.
+ */
+export const createOrder = async (invoice) => {
+  const razorpay = getRazorpayInstance();
+
+  if (razorpay) {
+    try {
+      const order = await razorpay.orders.create({
+        amount: invoice.total, // already in paise
+        currency: 'INR',
+        receipt: invoice.invoiceNumber,
+        notes: {
+          invoiceId: invoice._id.toString(),
+          publicId: invoice.publicId,
+          invoiceNumber: invoice.invoiceNumber,
+        },
+      });
+
+      console.log(`💳 Razorpay Order created: ${order.id}`);
+      return {
+        orderId: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        keyId: process.env.RAZORPAY_KEY_ID,
+      };
+    } catch (err) {
+      console.warn('⚠️ Razorpay Order creation failed:', err.message);
+      throw err;
+    }
+  }
+
+  // Fallback: demo/test mode with a fake orderId
+  console.log(`💳 [DEMO] Simulated Razorpay Order for ${invoice.invoiceNumber}`);
+  return {
+    orderId: `order_demo_${nanoid(8)}`,
+    amount: invoice.total,
+    currency: 'INR',
+    keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_demo',
+    demo: true,
+  };
+};
+
+/**
+ * Verifies Razorpay payment signature after checkout success.
+ * razorpay_order_id + razorpay_payment_id signed with secret.
+ */
+export const verifyPaymentSignature = (razorpayOrderId, razorpayPaymentId, razorpaySignature) => {
+  const secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!secret) return false;
+  try {
+    const body = `${razorpayOrderId}|${razorpayPaymentId}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(body)
+      .digest('hex');
+    return expectedSignature === razorpaySignature;
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Creates a Razorpay Payment Link or returns a demo link if test keys are not configured.
  */
 export const createPaymentLink = async (invoice, user) => {
